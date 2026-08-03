@@ -30,17 +30,15 @@ svg{shape-rendering:geometricPrecision;text-rendering:geometricPrecision}
 #fit{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
 #stage{width:1920px;height:1080px;aspect-ratio:16/9;transform-origin:center;background:var(--bg);position:relative;overflow:hidden;display:flex;flex-direction:column}
 
-header{height:88px;flex:none;display:flex;align-items:center;gap:20px;padding:0 34px;border-bottom:1px solid var(--edge);background:linear-gradient(180deg,#101722,#0A0F16)}
-.brand b{font-size:29px;font-weight:800;letter-spacing:-.02em}
+header{height:96px;flex:none;display:flex;align-items:center;gap:20px;padding:0 34px;border-bottom:1px solid var(--edge);background:linear-gradient(180deg,#101722,#0A0F16)}
+.brand b{font-size:46px;font-weight:800;letter-spacing:-.02em;line-height:1}
 .brand span{font-size:16px;color:var(--dim);margin-left:10px}
-.ptit{padding:7px 15px;border:1px solid var(--edge);border-radius:7px;background:#0E141D;font-size:20px;font-weight:700;white-space:nowrap}
-.ptit small{color:var(--dim);font-weight:400;margin-left:9px;font-size:16px}
 .sp{flex:1}
 .dots{display:flex;gap:5px}
 .dots i{width:7px;height:7px;border-radius:50%;background:var(--dim2);transition:.3s}
 .dots i.on{background:var(--txt);width:22px;border-radius:4px}
-.clock{font-size:36px;font-weight:600;line-height:1}
-.clock small{font-size:15px;color:var(--dim);margin-left:8px;font-weight:400}
+.clock{display:flex;align-items:baseline;gap:18px;font-size:46px;font-weight:700;line-height:1;letter-spacing:.01em}
+.clock .dt{font-size:46px;font-weight:600;color:#A9BACE}
 main{flex:1;position:relative;overflow:hidden}
 .pg{position:absolute;inset:0;padding:18px 34px;display:flex;flex-direction:column}
 .pg.enter,.pg.leave{will-change:transform,opacity}
@@ -223,7 +221,6 @@ main{flex:1;position:relative;overflow:hidden}
 <div id="fit"><div id="stage">
   <header>
     <div class="brand"><b>MFG Board</b></div>
-    <div class="ptit" id="ptit">데이터 불러오는 중</div>
     <div class="sp"></div>
     <div class="dots" id="dots"></div>
     <div class="dstamp">데이터 <b class="num" id="upd">--:--</b></div>
@@ -667,7 +664,7 @@ function renderP1(){
     grpRows++; mainRows+=order[sec].length;
     order[sec].forEach(function(l){ if(l.night.items.length) nightRows++; });
   });
-  var avail=STAGE_H()-88-36-62-26-8;
+  var avail=STAGE_H()-96-36-62-26-8;
   var rh=Math.max(30,Math.min(56,(avail-grpRows*30-nightRows*32)/Math.max(1,mainRows)));
 
   var ticks='';
@@ -786,7 +783,7 @@ function renderOeeLines(sec){
   var cols = n<=2?2 : (n<=4?4 : (n<=6?3 : 5));
   var rows = Math.ceil(n/cols);
   var gh = rows<=1?380 : (rows<=2?280 : 240);
-  var avail=STAGE_H()-88-36-56-gh-14-24-24;
+  var avail=STAGE_H()-96-36-56-gh-14-24-24;
   var cellH=(avail-(rows-1)*13)/rows;
   var nf2=Math.max(19,Math.min(36,cellH*0.155));
   var af=Math.max(12,Math.min(23,cellH*0.095));
@@ -960,7 +957,6 @@ function draw(instant,back){
     var els=next.querySelectorAll('.lcard,.gcard,.lrow,.nrow');
     for(var i=0;i<els.length;i++) els[i].style.animationDelay=(i*STAGGER)+'ms';
   }
-  document.getElementById('ptit').innerHTML=esc(p.t)+'<small>'+esc(p.s)+'</small>';
   document.getElementById('dots').innerHTML=PAGES.map(function(_,i){return '<i class="'+(i===idx?'on':'')+'"></i>';}).join('');
 }
 function go(k,back){ var b=(back!=null)?back:(k<idx); idx=(k+PAGES.length)%PAGES.length; tLeft=rotSec; draw(false,b); }
@@ -979,8 +975,9 @@ function isOn(d){
 var wasOn=null, secTick=0;
 function tick(){
   var d=new Date();
-  document.getElementById('clock').innerHTML=p2(d.getHours())+':'+p2(d.getMinutes())+
-    '<small>'+fd(d)+' ('+wkd(d)+')</small>';
+  document.getElementById('clock').innerHTML=
+    '<span class="dt">'+fd(d)+' ('+wkd(d)+')</span>'+
+    '<span>'+p2(d.getHours())+':'+p2(d.getMinutes())+'</span>';
   document.getElementById('peekClock').textContent=p2(d.getHours())+':'+p2(d.getMinutes());
   document.getElementById('peekMsg').textContent='다음 표시 '+ON+' (평일)';
   var on=isOn(d);
