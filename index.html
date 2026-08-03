@@ -9,8 +9,8 @@
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
 :root{
-  --bg:#080B10; --panel:#111823; --panel2:#0C121A; --edge:#1D2836;
-  --txt:#E8EFF7; --dim:#7C8B9E; --dim2:#48566A;
+  --bg:#070A0F; --panel:#131C28; --panel2:#0D141D; --edge:#2A3849;
+  --txt:#F2F7FC; --dim:#9BAEC4; --dim2:#6E8098;
   --good:#25D6A3; --warn:#F5B23C; --bad:#FF5A46; --run:#4EA8FF;
   --tcp:#4EA8FF; --fe:#B07BFF; --ftiv:#FF9F5A;
 }
@@ -24,8 +24,7 @@ body.cur #fsbtn,body.cur #navL,body.cur #navR{opacity:.6}
 #fsbtn{right:20px;bottom:16px;height:44px;padding:0 16px;gap:9px;font-size:17px;font-weight:600}
 #navL,#navR{top:50%;transform:translateY(-50%);width:52px;height:96px;font-size:26px}
 #navL{left:14px} #navR{right:14px}
-body{font-family:Pretendard,'Malgun Gothic',sans-serif;color:var(--txt);
-  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+body{font-family:Pretendard,'Malgun Gothic',sans-serif;color:var(--txt);text-rendering:optimizeLegibility}
 svg{shape-rendering:geometricPrecision;text-rendering:geometricPrecision}
 .num{font-family:'Barlow Condensed',Pretendard,sans-serif;font-variant-numeric:tabular-nums}
 #fit{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
@@ -238,12 +237,14 @@ main{flex:1;position:relative;overflow:hidden}
 <div id="navL">‹</div>
 <div id="navR">›</div>
 <div id="fsbtn"><span>⛶</span><span id="fslabel">전체화면</span></div>
-<div id="hint">10초 자동 전환 · 클릭 = 다음 · Space 정지 · X 전환효과 변경 · F 전체화면 · R 새로고침</div>
+<div id="hint">10초 자동 전환 · 클릭 = 다음 · Space 정지 · X 전환효과 · Z 크기 · F 전체화면 · R 새로고침</div>
 
 <script>
 /* ══════════════════════════════════════════════════════════
    MFG 생산현황판 V010  —  공유저장소 실데이터 연동
    ══════════════════════════════════════════════════════════ */
+/* 렌더 기준 폭 : 작을수록 요소가 크게 보임 (16:9 유지). Z 키로 조절 */
+var BASE_W=(function(){ try{ return parseInt(localStorage.getItem('tvboard_basew')||'1760',10)||1760; }catch(e){ return 1760; } })();
 var STORE='https://script.google.com/macros/s/AKfycbxLFrxbAaBt1bBa3SUdDY9wY48tvt85mEDaj3tiKhyw_R7oJCC9GbOWLfWbdSohnQtB/exec';
 
 /* 근무 시간 */
@@ -645,6 +646,8 @@ function buildOee(ym){
 }
 
 /* ══ 렌더 : 오늘의 생산계획 ══ */
+function STAGE_H(){ return Math.round(BASE_W*9/16); }
+function STAGE_W(){ return BASE_W; }
 function nowMin(){ var d=new Date(); return d.getHours()*60+d.getMinutes()+d.getSeconds()/60; }
 function renderP1(){
   var span=AXIS_E-AXIS_S, now=nowMin();
@@ -664,7 +667,7 @@ function renderP1(){
     grpRows++; mainRows+=order[sec].length;
     order[sec].forEach(function(l){ if(l.night.items.length) nightRows++; });
   });
-  var avail=1080-88-36-62-26-8;
+  var avail=STAGE_H()-88-36-62-26-8;
   var rh=Math.max(30,Math.min(56,(avail-grpRows*30-nightRows*32)/Math.max(1,mainRows)));
 
   var ticks='';
@@ -761,12 +764,12 @@ function gauge(value,color,opt){
   }
   var vbH=(cy+fs*0.45+6);
   return '<svg viewBox="0 0 180 '+vbH.toFixed(0)+'" preserveAspectRatio="xMidYMid meet">'+
-    '<path d="'+arc(A0,A1)+'" fill="none" stroke="#1A2431" stroke-width="'+sw+'"/>'+
+    '<path d="'+arc(A0,A1)+'" fill="none" stroke="#26323F" stroke-width="'+sw+'"/>'+
     (pct>0.3?'<path d="'+arc(A0,AV)+'" fill="none" stroke="'+color+'" stroke-width="'+sw+'"/>':'')+
     mark+
     '<text x="'+cx+'" y="'+(cy+fs*0.34).toFixed(1)+'" text-anchor="middle" font-size="'+fs+'" font-weight="700" fill="'+color+'" '+
       'font-family="Barlow Condensed, Pretendard, sans-serif">'+value.toFixed(1)+
-      '<tspan font-size="'+(fs*0.46).toFixed(1)+'" fill="#7C8B9E" dx="1">%</tspan></text>'+
+      '<tspan font-size="'+(fs*0.46).toFixed(1)+'" fill="#9BAEC4" dx="1">%</tspan></text>'+
   '</svg>';
 }
 
@@ -783,7 +786,7 @@ function renderOeeLines(sec){
   var cols = n<=2?2 : (n<=4?4 : (n<=6?3 : 5));
   var rows = Math.ceil(n/cols);
   var gh = rows<=1?380 : (rows<=2?280 : 240);
-  var avail=1080-88-36-56-gh-14-24-24;
+  var avail=STAGE_H()-88-36-56-gh-14-24-24;
   var cellH=(avail-(rows-1)*13)/rows;
   var nf2=Math.max(19,Math.min(36,cellH*0.155));
   var af=Math.max(12,Math.min(23,cellH*0.095));
@@ -985,7 +988,7 @@ function tick(){
   if(wasOn===false&&on===true) refresh();
   wasOn=on;
   var st=document.getElementById('stage'), s=d.getMinutes()%4;
-  var z=USE_ZOOM?Math.max(.2,Math.min(innerWidth/1920,innerHeight/1080)):1;
+  var z=USE_ZOOM?Math.max(.2,Math.min(innerWidth/BASE_W,innerHeight/(BASE_W*9/16))):1;
   st.style.marginLeft=((s-1.5)*2/z).toFixed(2)+'px';
   st.style.marginTop=(((s+2)%4-1.5)*2/z).toFixed(2)+'px';
   if(DATA&&playing){ tLeft--; if(tLeft<=0) go(idx+1,false); }
@@ -1035,6 +1038,13 @@ addEventListener('keydown',function(e){
   if(!DATA) return;
   if(e.key==='ArrowRight') go(idx+1,false);
   if(e.key==='ArrowLeft') go(idx-1,true);
+  if(e.key.toLowerCase()==='z'){
+    var STEPS=[1440,1600,1760,1920];
+    var i=STEPS.indexOf(BASE_W); BASE_W=STEPS[(i+1)%STEPS.length];
+    localStorage.setItem('tvboard_basew',String(BASE_W));
+    flash('렌더 기준폭 '+BASE_W+'px (숫자가 작을수록 크게 표시)');
+    fit();
+  }
   if(e.key.toLowerCase()==='x'){
     FX=FX_LIST[(FX_LIST.indexOf(FX)+1)%FX_LIST.length];
     localStorage.setItem('tvboard_fx',FX);
@@ -1045,12 +1055,26 @@ addEventListener('keydown',function(e){
   if(e.key==='0') document.getElementById('off').classList.toggle('on');
   if(e.key.toLowerCase()==='r') refresh();
 });
-var USE_ZOOM=(function(){ try{ return !!(window.CSS&&CSS.supports&&CSS.supports('zoom','2')); }catch(e){ return false; } })();
+/* zoom 지원 여부를 실제로 측정 (CSS.supports 는 비표준 속성에 부정확) */
+var USE_ZOOM=(function(){
+  try{
+    var d=document.createElement('div');
+    d.style.cssText='position:absolute;left:-9999px;top:0;width:100px;height:10px;zoom:2';
+    document.body.appendChild(d);
+    var w=d.getBoundingClientRect().width;
+    d.parentNode.removeChild(d);
+    return Math.abs(w-200)<2;
+  }catch(e){ return false; }
+})();
+
 function fit(){
-  var s=Math.min(innerWidth/1920,innerHeight/1080);
+  var bw=BASE_W, bh=Math.round(bw*9/16);
   var st=document.getElementById('stage');
-  if(USE_ZOOM){ st.style.zoom=s; st.style.transform=''; }   /* 실제 픽셀로 재렌더 → 선명 */
+  st.style.width=bw+'px'; st.style.height=bh+'px';
+  var s=Math.min(innerWidth/bw, innerHeight/bh);
+  if(USE_ZOOM){ st.style.zoom=s; st.style.transform=''; }
   else { st.style.zoom=''; st.style.transform='scale('+s+')'; }
+  if(DATA) draw(true);
 }
 addEventListener('resize',fit);
 
