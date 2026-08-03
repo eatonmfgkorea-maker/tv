@@ -24,10 +24,12 @@ body.cur #fsbtn,body.cur #navL,body.cur #navR{opacity:.6}
 #fsbtn{right:20px;bottom:16px;height:44px;padding:0 16px;gap:9px;font-size:17px;font-weight:600}
 #navL,#navR{top:50%;transform:translateY(-50%);width:52px;height:96px;font-size:26px}
 #navL{left:14px} #navR{right:14px}
-body{font-family:Pretendard,'Malgun Gothic',sans-serif;color:var(--txt)}
+body{font-family:Pretendard,'Malgun Gothic',sans-serif;color:var(--txt);
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+svg{shape-rendering:geometricPrecision;text-rendering:geometricPrecision}
 .num{font-family:'Barlow Condensed',Pretendard,sans-serif;font-variant-numeric:tabular-nums}
-#fit{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
-#stage{width:1920px;height:1080px;transform-origin:center;background:var(--bg);position:relative;overflow:hidden;display:flex;flex-direction:column}
+#fit{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
+#stage{width:1920px;height:1080px;aspect-ratio:16/9;transform-origin:center;background:var(--bg);position:relative;overflow:hidden;display:flex;flex-direction:column}
 
 header{height:88px;flex:none;display:flex;align-items:center;gap:20px;padding:0 34px;border-bottom:1px solid var(--edge);background:linear-gradient(180deg,#101722,#0A0F16)}
 .brand b{font-size:29px;font-weight:800;letter-spacing:-.02em}
@@ -41,7 +43,8 @@ header{height:88px;flex:none;display:flex;align-items:center;gap:20px;padding:0 
 .clock{font-size:36px;font-weight:600;line-height:1}
 .clock small{font-size:15px;color:var(--dim);margin-left:8px;font-weight:400}
 main{flex:1;position:relative;overflow:hidden}
-.pg{position:absolute;inset:0;padding:18px 34px;display:flex;flex-direction:column;will-change:transform,opacity}
+.pg{position:absolute;inset:0;padding:18px 34px;display:flex;flex-direction:column}
+.pg.enter,.pg.leave{will-change:transform,opacity}
 .pg.on{opacity:1}
 
 /* ── 화면 전환 효과 ────────────────────────────── */
@@ -750,15 +753,11 @@ function gauge(value,color,opt){
   var tgt=(opt.target!=null&&isFinite(opt.target))?opt.target:null;
   var mark='';
   if(tgt!=null){
-    var a=ang(tgt), ri=r-sw/2-2, ro=r+sw/2+2;
+    var a=ang(tgt), ri=r-sw/2-5, ro=r+sw/2+5;
     var x1=cx+ri*Math.cos(a), y1=cy+ri*Math.sin(a);
     var x2=cx+ro*Math.cos(a), y2=cy+ro*Math.sin(a);
-    var lx=cx+(ro+9)*Math.cos(a), ly=cy+(ro+9)*Math.sin(a);
-    var anch = tgt<44?'start':(tgt>56?'end':'middle');
     mark='<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" '+
-         'stroke="'+C_TGT+'" stroke-width="4" stroke-linecap="butt"/>'+
-         '<text x="'+lx.toFixed(1)+'" y="'+(ly+3.5).toFixed(1)+'" text-anchor="'+anch+'" font-size="13" font-weight="700" '+
-         'fill="'+C_TGT+'" font-family="Barlow Condensed, Pretendard, sans-serif">'+tgt.toFixed(1)+'</text>';
+         'stroke="'+C_TGT+'" stroke-width="5" stroke-linecap="butt"/>';
   }
   var vbH=(cy+fs*0.45+6);
   return '<svg viewBox="0 0 180 '+vbH.toFixed(0)+'" preserveAspectRatio="xMidYMid meet">'+
@@ -986,7 +985,9 @@ function tick(){
   if(wasOn===false&&on===true) refresh();
   wasOn=on;
   var st=document.getElementById('stage'), s=d.getMinutes()%4;
-  st.style.marginLeft=(s-1.5)*2+'px'; st.style.marginTop=((s+2)%4-1.5)*2+'px';
+  var z=USE_ZOOM?Math.max(.2,Math.min(innerWidth/1920,innerHeight/1080)):1;
+  st.style.marginLeft=((s-1.5)*2/z).toFixed(2)+'px';
+  st.style.marginTop=(((s+2)%4-1.5)*2/z).toFixed(2)+'px';
   if(DATA&&playing){ tLeft--; if(tLeft<=0) go(idx+1,false); }
   secTick++;
   if(DATA&&PAGES.length&&PAGES[idx].live&&secTick%20===0) draw(true);
@@ -1044,7 +1045,13 @@ addEventListener('keydown',function(e){
   if(e.key==='0') document.getElementById('off').classList.toggle('on');
   if(e.key.toLowerCase()==='r') refresh();
 });
-function fit(){ document.getElementById('stage').style.transform='scale('+Math.min(innerWidth/1920,innerHeight/1080)+')'; }
+var USE_ZOOM=(function(){ try{ return !!(window.CSS&&CSS.supports&&CSS.supports('zoom','2')); }catch(e){ return false; } })();
+function fit(){
+  var s=Math.min(innerWidth/1920,innerHeight/1080);
+  var st=document.getElementById('stage');
+  if(USE_ZOOM){ st.style.zoom=s; st.style.transform=''; }   /* 실제 픽셀로 재렌더 → 선명 */
+  else { st.style.zoom=''; st.style.transform='scale('+s+')'; }
+}
 addEventListener('resize',fit);
 
 var busy=false;
