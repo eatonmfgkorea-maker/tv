@@ -41,8 +41,47 @@ header{height:88px;flex:none;display:flex;align-items:center;gap:20px;padding:0 
 .clock{font-size:36px;font-weight:600;line-height:1}
 .clock small{font-size:15px;color:var(--dim);margin-left:8px;font-weight:400}
 main{flex:1;position:relative;overflow:hidden}
-.pg{position:absolute;inset:0;padding:18px 34px;opacity:0;pointer-events:none;transition:opacity .4s;display:flex;flex-direction:column}
+.pg{position:absolute;inset:0;padding:18px 34px;display:flex;flex-direction:column;will-change:transform,opacity}
 .pg.on{opacity:1}
+
+/* ── 화면 전환 효과 ────────────────────────────── */
+/* 1 fade : 은은한 교차 페이드 */
+.fx-fade .pg.enter{animation:fadeIn .70s cubic-bezier(.33,1,.68,1) both}
+.fx-fade .pg.leave{animation:fadeOut .70s cubic-bezier(.33,1,.68,1) both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+
+/* 2 slide : 좌우로 밀기 */
+.fx-slide .pg.enter{animation:slideIn .70s cubic-bezier(.65,0,.35,1) both}
+.fx-slide .pg.leave{animation:slideOut .70s cubic-bezier(.65,0,.35,1) both}
+@keyframes slideIn{from{opacity:0;transform:translateX(7%)}to{opacity:1;transform:none}}
+@keyframes slideOut{from{opacity:1;transform:none}to{opacity:0;transform:translateX(-7%)}}
+.fx-slide.rev .pg.enter{animation-name:slideInR}
+.fx-slide.rev .pg.leave{animation-name:slideOutR}
+@keyframes slideInR{from{opacity:0;transform:translateX(-7%)}to{opacity:1;transform:none}}
+@keyframes slideOutR{from{opacity:1;transform:none}to{opacity:0;transform:translateX(7%)}}
+
+/* 3 push : 위로 밀어올리기 */
+.fx-push .pg.enter{animation:pushIn .75s cubic-bezier(.65,0,.35,1) both}
+.fx-push .pg.leave{animation:pushOut .75s cubic-bezier(.65,0,.35,1) both}
+@keyframes pushIn{from{opacity:0;transform:translateY(6%)}to{opacity:1;transform:none}}
+@keyframes pushOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(-6%)}}
+
+/* 4 zoom : 살짝 확대하며 교차 */
+.fx-zoom .pg.enter{animation:zoomIn .75s cubic-bezier(.33,1,.68,1) both}
+.fx-zoom .pg.leave{animation:zoomOut .75s cubic-bezier(.33,1,.68,1) both}
+@keyframes zoomIn{from{opacity:0;transform:scale(1.035)}to{opacity:1;transform:scale(1)}}
+@keyframes zoomOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.975)}}
+
+/* 5 rise : 카드가 아래에서 차례로 올라옴 */
+.fx-rise .pg.enter{animation:fadeIn .55s ease both}
+.fx-rise .pg.leave{animation:fadeOut .40s ease both}
+.fx-rise .pg.enter .lcard,.fx-rise .pg.enter .gcard,
+.fx-rise .pg.enter .lrow,.fx-rise .pg.enter .nrow{animation:riseUp .60s cubic-bezier(.33,1,.68,1) both}
+@keyframes riseUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+/* 6 none : 즉시 */
+.fx-none .pg.leave{display:none}
 .dstamp{font-size:15px;color:var(--dim);padding:6px 12px;border:1px solid var(--edge);border-radius:6px;background:#0E141D}
 .dstamp b{color:var(--txt)}
 .card{background:var(--panel);border:1px solid var(--edge);border-radius:13px;padding:16px 20px}
@@ -196,7 +235,7 @@ main{flex:1;position:relative;overflow:hidden}
 <div id="navL">‹</div>
 <div id="navR">›</div>
 <div id="fsbtn"><span>⛶</span><span id="fslabel">전체화면</span></div>
-<div id="hint">10초마다 자동 전환 · 클릭 = 다음 페이지 · Space 정지 · F 전체화면 · R 새로고침</div>
+<div id="hint">10초 자동 전환 · 클릭 = 다음 · Space 정지 · X 전환효과 변경 · F 전체화면 · R 새로고침</div>
 
 <script>
 /* ══════════════════════════════════════════════════════════
@@ -564,7 +603,7 @@ function prepare(){
   });
 
   DATA={ today:today, sched:sched, oee:oee, oeeYm:ym, week:{days:days,sets:wk} };
-  buildPages(); draw();
+  buildPages(); draw(true);
   var b=document.getElementById('boot'); if(b) b.remove();
   document.getElementById('upd').textContent=LOADED_AT;
 }
@@ -893,14 +932,36 @@ function buildPages(){
   });
   idx=0;
 }
-function draw(){
+/* 전환 효과 : fade / slide / push / zoom / rise / none */
+var FX_LIST=['fade','slide','push','zoom','rise','none'];
+var FX = localStorage.getItem('tvboard_fx') || 'slide';
+var STAGGER=70;   /* rise 효과에서 카드가 차례로 올라오는 간격(ms) */
+
+function draw(instant,back){
   if(!PAGES.length) return;
-  var p=PAGES[idx];
-  document.getElementById('main').innerHTML='<div class="pg on">'+p.html()+'</div>';
+  var p=PAGES[idx], main=document.getElementById('main');
+  main.className='fx-'+FX+(back?' rev':'');
+  var next=document.createElement('div');
+  next.className='pg on'+(instant||FX==='none'?'':' enter');
+  next.innerHTML=p.html();
+
+  var prev=main.querySelector('.pg');
+  if(prev && !instant && FX!=='none'){
+    prev.classList.remove('enter');
+    prev.classList.add('leave');
+    prev.addEventListener('animationend',function(){ if(prev.parentNode) prev.remove(); });
+    setTimeout(function(){ if(prev.parentNode) prev.remove(); },900);
+  } else if(prev){ prev.remove(); }
+  main.appendChild(next);
+
+  if(FX==='rise'&&!instant){
+    var els=next.querySelectorAll('.lcard,.gcard,.lrow,.nrow');
+    for(var i=0;i<els.length;i++) els[i].style.animationDelay=(i*STAGGER)+'ms';
+  }
   document.getElementById('ptit').innerHTML=esc(p.t)+'<small>'+esc(p.s)+'</small>';
   document.getElementById('dots').innerHTML=PAGES.map(function(_,i){return '<i class="'+(i===idx?'on':'')+'"></i>';}).join('');
 }
-function go(k){ idx=(k+PAGES.length)%PAGES.length; tLeft=rotSec; draw(); }
+function go(k,back){ var b=(back!=null)?back:(k<idx); idx=(k+PAGES.length)%PAGES.length; tLeft=rotSec; draw(false,b); }
 
 /* ══ 스케줄 08:00~18:00 ══ */
 /* 표시 시간 스케줄 : SCHEDULE_ON=false 이면 항상 표시 (TV 설치 후 true 로) */
@@ -926,9 +987,9 @@ function tick(){
   wasOn=on;
   var st=document.getElementById('stage'), s=d.getMinutes()%4;
   st.style.marginLeft=(s-1.5)*2+'px'; st.style.marginTop=((s+2)%4-1.5)*2+'px';
-  if(DATA&&playing){ tLeft--; if(tLeft<=0) go(idx+1); }
+  if(DATA&&playing){ tLeft--; if(tLeft<=0) go(idx+1,false); }
   secTick++;
-  if(DATA&&PAGES.length&&PAGES[idx].live&&secTick%20===0) draw();
+  if(DATA&&PAGES.length&&PAGES[idx].live&&secTick%20===0) draw(true);
 }
 /* ══ 조작 : 클릭 전환 · 전체화면 · 커서 ══ */
 var curTimer=null;
@@ -960,9 +1021,9 @@ document.addEventListener('fullscreenchange',function(){
   setTimeout(fit,120);
 });
 document.getElementById('fsbtn').addEventListener('click',function(e){ e.stopPropagation(); toggleFS(); });
-document.getElementById('navL').addEventListener('click',function(e){ e.stopPropagation(); if(DATA) go(idx-1); });
-document.getElementById('navR').addEventListener('click',function(e){ e.stopPropagation(); if(DATA) go(idx+1); });
-document.getElementById('fit').addEventListener('click',function(){ if(DATA) go(idx+1); });
+document.getElementById('navL').addEventListener('click',function(e){ e.stopPropagation(); if(DATA) go(idx-1,true); });
+document.getElementById('navR').addEventListener('click',function(e){ e.stopPropagation(); if(DATA) go(idx+1,false); });
+document.getElementById('fit').addEventListener('click',function(){ if(DATA) go(idx+1,false); });
 
 document.getElementById('off').addEventListener('click',function(){
   var p=document.getElementById('peek'); p.classList.add('on');
@@ -971,8 +1032,14 @@ document.getElementById('off').addEventListener('click',function(){
 addEventListener('keydown',function(e){
   if(e.key.toLowerCase()==='f'){ toggleFS(); return; }
   if(!DATA) return;
-  if(e.key==='ArrowRight') go(idx+1);
-  if(e.key==='ArrowLeft') go(idx-1);
+  if(e.key==='ArrowRight') go(idx+1,false);
+  if(e.key==='ArrowLeft') go(idx-1,true);
+  if(e.key.toLowerCase()==='x'){
+    FX=FX_LIST[(FX_LIST.indexOf(FX)+1)%FX_LIST.length];
+    localStorage.setItem('tvboard_fx',FX);
+    flash('화면 전환 효과 : '+FX);
+    draw(false,false);
+  }
   if(e.key===' '){ playing=!playing; e.preventDefault(); flash(playing?'자동 전환 켜짐 ('+rotSec+'초)':'자동 전환 꺼짐'); }
   if(e.key==='0') document.getElementById('off').classList.toggle('on');
   if(e.key.toLowerCase()==='r') refresh();
