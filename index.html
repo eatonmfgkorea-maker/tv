@@ -939,25 +939,54 @@ var STAGGER=70;   /* rise 효과에서 카드가 차례로 올라오는 간격(m
 function draw(instant,back){
   if(!PAGES.length) return;
   var p=PAGES[idx], main=document.getElementById('main');
+  if(!main) return;
   main.className='fx-'+FX+(back?' rev':'');
-  var next=document.createElement('div');
-  next.className='pg on'+(instant||FX==='none'?'':' enter');
-  next.innerHTML=p.html();
 
-  var prev=main.querySelector('.pg');
-  if(prev && !instant && FX!=='none'){
-    prev.classList.remove('enter');
-    prev.classList.add('leave');
-    prev.addEventListener('animationend',function(){ if(prev.parentNode) prev.remove(); });
-    setTimeout(function(){ if(prev.parentNode) prev.remove(); },900);
-  } else if(prev){ prev.remove(); }
+  /* 이전 페이지 정리 : 남아 있는 모든 .pg 를 대상으로 한다.
+     querySelector 하나만 지우면 전환이 겹칠 때 잔여 페이지가 쌓여 화면이 겹친다. */
+  var olds=main.querySelectorAll('.pg');
+  var animate = !instant && FX!=='none' && !document.hidden;
+  for(var k=0;k<olds.length;k++){
+    var el=olds[k];
+    if(el.__leaving || !animate || k<olds.length-1){
+      /* 이미 빠지는 중이거나, 즉시 전환이거나, 가장 최근 것이 아니면 바로 제거 */
+      if(el.parentNode) el.parentNode.removeChild(el);
+      continue;
+    }
+    el.__leaving=true;
+    el.classList.remove('enter');
+    el.classList.add('leave');
+    (function(node){
+      var kill=function(){ if(node.parentNode) node.parentNode.removeChild(node); };
+      node.addEventListener('animationend',kill);
+      setTimeout(kill,1200);
+    })(el);
+  }
+
+  var next=document.createElement('div');
+  next.className='pg on'+(animate?' enter':'');
+  next.innerHTML=p.html();
   main.appendChild(next);
 
-  if(FX==='rise'&&!instant){
+  if(FX==='rise'&&animate){
     var els=next.querySelectorAll('.lcard,.gcard,.lrow,.nrow');
     for(var i=0;i<els.length;i++) els[i].style.animationDelay=(i*STAGGER)+'ms';
   }
-  document.getElementById('dots').innerHTML=PAGES.map(function(_,i){return '<i class="'+(i===idx?'on':'')+'"></i>';}).join('');
+  var dots=document.getElementById('dots');
+  if(dots) dots.innerHTML=PAGES.map(function(_,i){return '<i class="'+(i===idx?'on':'')+'"></i>';}).join('');
+}
+
+/* 잔여 페이지 청소 : 어떤 이유로든 2개 이상 남으면 마지막만 남긴다 */
+function sweepPages(){
+  var main=document.getElementById('main'); if(!main) return;
+  var els=main.querySelectorAll('.pg');
+  for(var i=0;i<els.length-1;i++) if(els[i].parentNode) els[i].parentNode.removeChild(els[i]);
+  if(els.length){
+    var last=els[els.length-1];
+    last.classList.remove('leave','enter');
+    last.__leaving=false;
+    last.classList.add('on');
+  }
 }
 function go(k,back){ var b=(back!=null)?back:(k<idx); idx=(k+PAGES.length)%PAGES.length; tLeft=rotSec; draw(false,b); }
 
@@ -990,7 +1019,15 @@ function tick(){
   st.style.marginTop=(((s+2)%4-1.5)*2/z).toFixed(2)+'px';
   if(DATA&&playing){ tLeft--; if(tLeft<=0) go(idx+1,false); }
   secTick++;
-  if(DATA&&PAGES.length&&PAGES[idx].live&&secTick%20===0) draw(true);
+  /* 진행 중 라인 갱신 : 전환 애니메이션 중에는 건너뛴다 (겹침 방지) */
+  if(DATA&&PAGES.length&&PAGES[idx].live&&secTick%20===0){
+    var mm=document.getElementById('main');
+    if(!mm || mm.querySelectorAll('.pg.leave').length===0) draw(true);
+  }
+  /* 5초마다 잔여 페이지 청소 */
+  if(secTick%5===0) sweepPages();
+  /* 날짜가 바뀌면 오늘 계획을 다시 만든다 (하루 종일 켜두는 경우) */
+  if(DATA && fd(d)!==DATA.today){ DATA=null; _LOGS=null; refresh(); }
 }
 /* ══ 조작 : 클릭 전환 · 전체화면 · 커서 ══ */
 var curTimer=null;
@@ -1074,6 +1111,9 @@ function fit(){
   if(DATA) draw(true);
 }
 addEventListener('resize',fit);
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden){ sweepPages(); if(DATA) draw(true); }
+});
 
 var busy=false;
 async function refresh(){
