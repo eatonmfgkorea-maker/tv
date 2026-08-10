@@ -467,13 +467,23 @@ function planWorkers(sec,item,date,dayQty){
   /* 어떤 인원으로도 정규시간 초과 → 최대 투입 (잔업) */
   return v.reduce(function(a,b){ return (q(b)>q(a))?b:a; }).workers;
 }
-function baseQtyFor(sec,item,date,workers,dayQty){
+/* 정규시간(휴게 제외 실작업) 기준 계획 생산량.
+   baseQty 는 100% 효율 이론값이라 잔업 판정에 쓰면 안 되고,
+   실제 계획 기준인 planQty 를 써야 현장 잔업 여부와 일치한다. */
+function planQtyFor(sec,item,date,workers,dayQty){
   var v=ctEntries(sec,item,date);
   if(!v) return null;
-  for(var i=0;i<v.length;i++) if(v[i].workers===workers) return v[i].baseQty;
-  var best=v[0], bd=Infinity;
-  v.forEach(function(c){ var d=Math.abs((c.planQty||c.baseQty||0)-dayQty); if(d<bd){bd=d;best=c;} });
-  return best.baseQty;
+  var pick=null;
+  for(var i=0;i<v.length;i++) if(v[i].workers===workers){ pick=v[i]; break; }
+  if(!pick){
+    var bd=Infinity;
+    v.forEach(function(c){ var d=Math.abs((c.planQty||c.baseQty||0)-dayQty); if(d<bd){bd=d;pick=c;} });
+  }
+  if(!pick) return null;
+  var pq=parseFloat(pick.planQty)||0;
+  if(pq>0) return {qty:pq, byPlan:true};
+  var bq=parseFloat(pick.baseQty)||0;
+  return bq>0 ? {qty:bq, byPlan:false} : null;
 }
 /* 최근 실적에서 라인 대표 인원 */
 var WMODE={};
@@ -533,13 +543,16 @@ function shiftSchedule(sec,line,date,shift){
   var items=planOf(sec,line,shift,date);
   var tot=items.reduce(function(a,b){return a+b.qty;},0);
   var cb=((sectionData(sec).settings||{})[sec]||{}).ctBaseMinutes||435;
-  var NORMAL=(shift==='야간')?cb:workElapsed(SH.start,SH.normalEnd);
+  var NORMAL=workElapsed(SH.start,SH.normalEnd);
   var W = items.length ? (planWorkers(sec,items[0].item,date,tot) || modeWorkers(sec,line,items[0].item)) : null;
   var raw=[], total=0;
   items.forEach(function(x){
-    var bq=x.item?baseQtyFor(sec,x.item,date,W,tot):null;
-    if(!bq){ raw.push({name:x.name,qty:x.qty,noCT:true,dur:0}); return; }
-    var d=x.qty/bq*cb; raw.push({name:x.name,qty:x.qty,dur:d}); total+=d;
+    var pq=x.item?planQtyFor(sec,x.item,date,W,tot):null;
+    if(!pq){ raw.push({name:x.name,qty:x.qty,noCT:true,dur:0}); return; }
+    /* planQty = 정규시간에 만드는 수량 → 소요시간 = 수량/planQty × 정규시간
+       planQty 가 없으면 baseQty × ctBaseMinutes 로 대체 */
+    var d = pq.byPlan ? (x.qty/pq.qty*NORMAL) : (x.qty/pq.qty*cb);
+    raw.push({name:x.name,qty:x.qty,dur:d}); total+=d;
   });
   var stretched=false;
   if(shift==='주간'&&total>0&&total<NORMAL){
